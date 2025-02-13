@@ -1,0 +1,64 @@
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.naive_bayes import GaussianNB
+from sklearn.metrics import confusion_matrix, accuracy_score
+
+# Load the dataset (Ensure the file is in the same directory or provide the correct path)
+df = pd.read_csv("/content/breastcancer.csv")
+
+# Display first few rows
+print("Dataset Preview:\n", df.head())
+
+# Drop 'ID' column if it exists
+if 'ID' in df.columns:
+    df.drop(columns=['ID'], inplace=True)
+
+# Check for missing values and handle them (if any)
+df.dropna(inplace=True)
+
+# Encode categorical variables
+label_encoders = {}
+for col in df.select_dtypes(include=['object']).columns:
+    le = LabelEncoder()
+    df[col] = le.fit_transform(df[col])  # Convert categories to numbers
+    label_encoders[col] = le
+
+# Define features and target variable
+X = df.drop(columns=['smoothness_mean'])  # Change 'Diagnosis' if your target column has a different name
+y = df['smoothness_mean']
+
+# If 'smoothness_mean' is continuous and you want to stratify it for binary classification
+# consider discretizing it (e.g. median split) to create two classes
+y_binary = pd.qcut(y, 2, labels=[0, 1])
+
+# Split the data into training and testing sets
+# Use y_binary if you've discretized the target
+# Otherwise, remove the stratify parameter if you want random splitting
+X_train, X_test, y_train, y_test = train_test_split(X, y_binary, test_size=0.2, random_state=42, stratify=y_binary) # Using y_binary here and below if applicable
+
+# Initialize and train the Naïve Bayes classifier
+classifier = GaussianNB()
+classifier.fit(X_train, y_train)
+
+# Make predictions
+y_pred = classifier.predict(X_test)
+
+# Compute confusion matrix
+conf_matrix = confusion_matrix(y_test, y_pred)
+print("\nConfusion Matrix:\n", conf_matrix)
+
+# Compute detection accuracy
+accuracy = accuracy_score(y_test, y_pred)
+print(f"\nDetection Accuracy: {accuracy:.2f}")
+
+# Plot confusion matrix
+plt.figure(figsize=(5, 4))
+sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="Blues", xticklabels=['Benign', 'Malignant'], yticklabels=['Benign', 'Malignant'])
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.title("Confusion Matrix")
+plt.show()

@@ -1,0 +1,47 @@
+import tensorflow as tf
+from tensorflow.keras.layers import Input, Conv2D, MaxPooling2D, UpSampling2D, Concatenate
+from tensorflow.keras.models import Model
+import numpy as np
+
+# Define UNet Model
+def build_unet(input_shape):
+    inputs = Input(input_shape)
+
+    # Encoder
+    c1 = Conv2D(64, (3,3), activation='relu', padding='same')(inputs)
+    c1 = Conv2D(64, (3,3), activation='relu', padding='same')(c1)
+    p1 = MaxPooling2D((2,2))(c1)
+
+    c2 = Conv2D(128, (3,3), activation='relu', padding='same')(p1)
+    c2 = Conv2D(128, (3,3), activation='relu', padding='same')(c2)
+    p2 = MaxPooling2D((2,2))(c2)
+
+    # Bottleneck
+    c3 = Conv2D(256, (3,3), activation='relu', padding='same')(p2)
+    c3 = Conv2D(256, (3,3), activation='relu', padding='same')(c3)
+
+    # Decoder
+    u1 = UpSampling2D((2,2))(c3)
+    u1 = Concatenate()([u1, c2])
+    c4 = Conv2D(128, (3,3), activation='relu', padding='same')(u1)
+    c4 = Conv2D(128, (3,3), activation='relu', padding='same')(c4)
+
+    u2 = UpSampling2D((2,2))(c4)
+    u2 = Concatenate()([u2, c1])
+    c5 = Conv2D(64, (3,3), activation='relu', padding='same')(u2)
+    c5 = Conv2D(64, (3,3), activation='relu', padding='same')(c5)
+
+    outputs = Conv2D(1, (1,1), activation='sigmoid')(c5)
+
+    model = Model(inputs, outputs)
+    return model
+
+# Compile Model
+input_shape = (256, 256, 3)
+model = build_unet(input_shape)
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+# Test with Dummy Data
+dummy_input = np.random.rand(1, 256, 256, 3)
+prediction = model.predict(dummy_input)
+print("Prediction shape:", prediction.shape)

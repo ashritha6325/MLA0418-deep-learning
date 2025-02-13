@@ -1,0 +1,50 @@
+import tensorflow as tf
+from tensorflow.keras.preprocessing import image_dataset_from_directory
+from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, PReLU, Softmax
+from tensorflow.keras import models, layers
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+
+# Load and preprocess CIFAR-10 dataset
+(x_train, y_train), (x_test, y_test) = tf.keras.datasets.cifar10.load_data()
+x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=0.03, random_state=42)
+x_val, x_test, y_val, y_test = train_test_split(x_val, y_val, test_size=0.5, random_state=42)
+
+# Normalize the data to range [0, 1]
+x_train, x_val, x_test = x_train / 255.0, x_val / 255.0, x_test / 255.0
+
+# Define the model architecture using pre-trained ResNet101V2
+base_model = tf.keras.applications.ResNet101V2(weights='imagenet', include_top=False, input_shape=(32, 32, 3))
+
+# Freezing the base model to avoid retraining
+base_model.trainable = False
+
+# Building the model
+model = models.Sequential([
+    base_model,
+    GlobalAveragePooling2D(),  # Global average pooling layer
+    PReLU(),  # Initial Activation function
+    Dense(10),  # 10 classes for CIFAR-10
+    Softmax()  # Final activation function
+])
+
+# Compile the model with the specified optimizer
+model.compile(optimizer=tf.keras.optimizers.SGD(), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+# Train the model with the requested epochs
+history = model.fit(x_train, y_train, epochs=25, validation_data=(x_val, y_val))
+
+# Plot the training and validation accuracy
+plt.figure(figsize=(10, 6))
+plt.plot(history.history['accuracy'], label='Training Accuracy')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.title('Training and Validation Accuracy')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+# Evaluate the model on the test set
+test_loss, test_acc = model.evaluate(x_test, y_test, verbose=2)
+print(f"Test Accuracy: {test_acc * 100:.2f}%")
